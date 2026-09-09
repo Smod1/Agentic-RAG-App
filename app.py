@@ -33,7 +33,7 @@ llm = LLM(
     model="groq/openai/gpt-oss-20b",
     api_key=GROQ_API_KEY,
     temperature=0.1,
-    max_tokens=1000,
+    max_tokens=300,
 )
 print("LLM created", flush = True)
 
@@ -258,30 +258,22 @@ router_task = Task(
 retriever_task = Task(
     description=(
         "Answer the user's question using the appropriate retrieval tool.\n\n"
-
         "User question:\n"
         "{question}\n\n"
 
-        "First examine the routing decision from router_task.\n\n"
+        "Use the PDFSearchTool if the router selected vectorstore. "
+        "Use Tavily if the router selected websearch.\n\n"
 
-        "If the routing decision is 'vectorstore', use the PDFSearchTool "
-        "to search doc.pdf and retrieve the most relevant information.\n\n"
-
-        "If the routing decision is 'websearch', use the Tavily web "
-        "search tool to retrieve relevant information from the internet.\n\n"
-
-        "Do not make up information.\n"
-        "Return the relevant retrieved facts and enough context for "
-        "another agent to evaluate them."
+        "Return ONLY the 3 most relevant factual findings. "
+        "Keep the response under 150 words. "
+        "Do not provide unnecessary explanation. "
+        "Do not invent information."
     ),
-
     expected_output=(
-        "Relevant factual information retrieved from either the PDF "
-        "vectorstore or web search."
+        "Up to 3 concise factual findings directly relevant to the question, "
+        "under 150 words."
     ),
-
     agent=Retriever_Agent,
-
     context=[router_task],
 )
 
@@ -289,27 +281,14 @@ retriever_task = Task(
 # sets task to say whether the information retrieved is relevant or not
 grader_task = Task(
     description=(
-        "Evaluate the retrieved information from retriever_task "
-        "against the user's question.\n\n"
-
-        "User question:\n"
+        "Evaluate whether the retrieved information answers the question.\n\n"
+        "Question:\n"
         "{question}\n\n"
 
-        "Determine whether the retrieved information is relevant "
-        "and useful for answering the question.\n\n"
-
-        "Return 'yes' if the retrieved information is relevant.\n"
-        "Return 'no' if it is not relevant.\n\n"
-
-        "Return ONLY yes or no."
+        "Return ONLY 'yes' or 'no'."
     ),
-
-    expected_output=(
-        "Exactly one word: yes or no."
-    ),
-
+    expected_output="Exactly one word: yes or no.",
     agent=Grader_agent,
-
     context=[retriever_task],
 )
 
@@ -317,35 +296,14 @@ grader_task = Task(
 # sets the task to check for hallucination or actually an answer
 hallucination_task = Task(
     description=(
-        "Check whether the information retrieved by retriever_task "
-        "is sufficiently grounded to support an answer to the user's "
-        "question.\n\n"
+        "Check whether the retrieved information supports an answer "
+        "to the user's question.\n\n"
 
-        "User question:\n"
-        "{question}\n\n"
-
-        "Review the actual retrieved information from retriever_task. "
-        "Do not rely only on the relevance grader's yes/no result.\n\n"
-
-        "Return 'yes' if the retrieved information supports a factual "
-        "answer to the question.\n\n"
-
-        "Return 'no' if the retrieved information is insufficient, "
-        "unsupported, or unrelated.\n\n"
-
-        "Return ONLY yes or no."
+        "Return ONLY 'yes' or 'no'."
     ),
-
-    expected_output=(
-        "Exactly one word: yes or no."
-    ),
-
+    expected_output="Exactly one word: yes or no.",
     agent=hallucination_grader,
-
-    context=[
-        retriever_task,
-        grader_task,
-    ],
+    context=[retriever_task, grader_task],
 )
 
 
@@ -353,37 +311,17 @@ hallucination_task = Task(
 
 answer_task = Task(
     description=(
-        "Produce the final answer to the user's question.\n\n"
-
-        "User question:\n"
+        "Answer the user's question using the retrieved information.\n\n"
+        "Question:\n"
         "{question}\n\n"
 
-        "Use the retrieved information and the grading results.\n\n"
-
-        "If the retrieved information is relevant and grounded, "
-        "answer the question clearly and concisely using that information.\n\n"
-
-        "If the retrieved information is insufficient or not grounded, "
-        "use the web search tool to find additional information and "
-        "then answer the question.\n\n"
-
-        "Do not mention internal agents, routing, graders, vectorstores, "
-        "or this workflow unless the user specifically asks about them.\n\n"
-
+        "Give a concise factual answer in no more than 100 words. "
+        "Do not mention agents, routing, graders, or vectorstores. "
         "Do not invent facts."
     ),
-
-    expected_output=(
-        "A clear, concise, factual answer to the user's question."
-    ),
-
+    expected_output="A concise factual answer under 100 words.",
     agent=answer_grader,
-
-    context=[
-        retriever_task,
-        grader_task,
-        hallucination_task,
-    ],
+    context=[retriever_task, grader_task, hallucination_task],
 )
 
 
