@@ -2,10 +2,12 @@ import os
 from langchain_openai import ChatOpenAI
 from langchain_tavily import TavilySearch
 from crewai import Agent, Task, Crew
-from crewai_tools import PDFSearchTool
+from crewai_tools import PDFSearchTool, TavilySearchTool
 from crewai.tools import tool
 from dotenv import load_dotenv
+import crewai.llms.cache as _crewai_cache
 
+_crewai_cache.mark_cache_breakpoint = lambda msg: msg # workaround for CrewAI 1.15 x + Groq cache_breakpoint bug
 # loads API keys
 load_dotenv()
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
@@ -24,11 +26,11 @@ if not TAVILY_API_KEY:
     )
 
 
-# creates the llm model, uses groq llama3
+# creates the llm model, uses groq openai gpt oss
 print("About to create LLM", flush = True)
 from crewai import LLM
 llm = LLM(
-    model="groq/llama-3.1-8b-instant",
+    model="groq/openai/gpt-oss-20b",
     api_key=GROQ_API_KEY,
     temperature=0.1,
     max_tokens=1000,
@@ -55,7 +57,7 @@ rag_tool = PDFSearchTool(
 print("PDFSearchTool Created")
 
 # creates the tool to enable web search, returns 3 search results
-web_search_tool = TavilySearch(
+web_search_tool = TavilySearchTool(
     max_results=3
 )
 
