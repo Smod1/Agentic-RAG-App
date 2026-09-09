@@ -1,6 +1,6 @@
 import os
 from langchain_openai import ChatOpenAI
-from langchain_community.tools.tavily_search import TavilySearchResults
+from langchain_tavily import TavilySearch
 from crewai import Agent, Task, Crew
 from crewai_tools import PDFSearchTool
 from crewai.tools import tool
@@ -26,10 +26,10 @@ if not TAVILY_API_KEY:
 
 # creates the llm model, uses groq llama3
 print("About to create LLM", flush = True)
-llm = ChatOpenAI(
-    openai_api_base="https://api.groq.com/openai/v1",
-    openai_api_key=GROQ_API_KEY,
-    model_name="llama-3.1-8b-instant",
+from crewai import LLM
+llm = LLM(
+    model="groq/llama-3.1-8b-instant",
+    api_key=GROQ_API_KEY,
     temperature=0.1,
     max_tokens=1000,
 )
@@ -55,16 +55,16 @@ rag_tool = PDFSearchTool(
 print("PDFSearchTool Created")
 
 # creates the tool to enable web search, returns 3 search results
-web_search_tool = TavilySearchResults(
-    k=3
+web_search_tool = TavilySearch(
+    max_results=3
 )
 
 
 # creates router tool
 @tool
 def router_tool(question: str) -> str:
-    # Decide whether a question should use the PDF vectorstore
-    # or an external web search.
+    '''Decide whether a question should use the PDF vectorstore
+    # or an external web search.'''
 
 
     question_lower = question.lower()
